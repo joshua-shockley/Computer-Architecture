@@ -48,6 +48,7 @@ class CPU:
 # this gets me  a simplified binary number without the first zeros
 # may need to get to the shift part
 
+
     def get_number(self, list):
         add_up = 0
         if list[0] == '1':
@@ -70,6 +71,9 @@ class CPU:
         return bin(add_up)
 
     def load(self):
+        # may be a good idea to set this up with a
+        # default as sys.argv[1] which is the file after
+        # "python ls8.py [sys.argv file name here]"
         """Load a program into memory."""
         address = 0
         print(sys.argv)
@@ -114,11 +118,26 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        # elif op == "SUB":
-        #     ex:
-        elif op == "MUL":
-            self.reg[reg_a] * self.reg[reg_b]
+            self.reg[self.ram[reg_a]] += self.reg[self.ram[reg_b]]
+
+        elif op == "SUB":
+            # this may need adjustment..
+            # don't think binary handles neg numbers...
+            # we'll see i guess
+            val1 = self.reg[self.ram[reg_a]]
+            val2 = self.reg[self.ram[reg_b]]
+            new_val = val1 - val2
+            self.reg[self.ram[reg_a]] = new_val
+
+        elif op == MUL:
+            val1 = self.reg[self.ram[reg_a]]
+            val2 = self.reg[self.ram[reg_b]]
+            new_val = val1 * val2
+            self.reg[self.ram[reg_a]] = new_val
+
+        elif op == "DIV":
+            self.reg[self.ram[reg_a]] /= self.reg[self.ram[reg_b]]
+
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -168,14 +187,19 @@ class CPU:
         while self.running:
             command = self.ram[self.pc]
 
-            if command == HLT:
-                self.halt()
-
-            elif command == PRN:
+            if command == PRN:
                 self.PRN()
 
-            elif command == 'alu':
-                print('huh.... so far anyway...lol')
+            elif command == MUL:
+                print(f"printing self.reg: \n", self.reg)
+                print(f"ram/memory: \n{self.ram}")
+                print(f"pc current location: {self.pc}")
+                counter1 = self.pc+1
+                counter2 = self.pc+2
+                print(counter1, counter2)
+                print(f"the pc is at: {self.pc}")
+                self.alu(MUL, counter1, counter2)
+                self.pc += 3
 
             elif command == LDI:
                 self.pc += 1
@@ -189,6 +213,9 @@ class CPU:
                 self.ldi(rg, vs)
 
                 self.pc += 1
+
+            elif command == HLT:
+                self.halt()
 
             else:
                 print(f"we don't know that shit... need to add more funcitons")
