@@ -9,6 +9,8 @@ import sys
 LDI = 0b10000010  # load immediate - goes into a reg
 PRN = 0b01000111  # prints a number from reg
 HLT = 0b1  # stops program
+PUSH = 0b1000101
+POP = 0b1000110
 ADD = 0b10100000
 SUB = 0b10100001
 MUL = 0b10100010
@@ -23,31 +25,6 @@ OR = 0b10101010
 XOR = 0b10101011
 SHL = 0b10101100
 SHR = 0b10101101
-# opCodes = {
-#     0b10100000: ADD,
-#     0b10100001: SUB,
-#     0b10100010: MUL,
-#     0b10100011: DIV,
-#     0b10100100: MOD,
-#     0b1100101: INC,
-#     0b1100110: DEC,
-#     0b10100111: CMP,
-#     0b10101000: AND,
-#     0b1101001: NOT,
-#     0b10101010: OR,
-#     0b10101011: XOR,
-#     0b10101100: SHL,
-#     0b10101101: SHR,
-#     0b10000010: LDI,  # load immediate - goes into a reg
-#     0b01000111: PRN,  # prints a number from reg
-#     0b1: HLT,  # stops program
-
-# }
-
-
-# print(f"0b1010: {0b1010}")
-# print(f"binary for 10: {int('1010', 2)}")
-# print(f"decimal to what should be binary: {bin(10)}")
 
 
 class CPU:
@@ -61,11 +38,19 @@ class CPU:
         # r7 is reserved as the stack pointer
         self.ram = [0] * 256  # ram is the memory i believe so far
         self.pc = 0  # this is the Program Counter... points to the location in memory at what program to read...current action
+        self.SP = 7
+        self.reg[self.SP] = len(self.ram)-1
         self.running = True  # sets this as a starter flag for the loop to run
         self.fl = 00000000  # this is a flag
         # FL: BITS: 00000LGE Less-than, Greater-than, Equal if reg_a is one those to reg_b as 1 or if false 0
         self.ie = 00000000
-        pass
+        self.branchtable = {}
+        self.branchtable[LDI] = self.LDI
+        self.branchtable[PRN] = self.PRN
+        self.branchtable[MUL] = self.MUL
+        self.branchtable[HLT] = self.HLT
+        self.branchtable[PUSH] = self.PUSH
+        self.branchtable[POP] = self.POP
 
 
 # this gets me  a simplified binary number without the first zeros
@@ -99,7 +84,7 @@ class CPU:
         # "python ls8.py [sys.argv file name here]"
         """Load a program into memory."""
         address = 0
-        print(sys.argv)
+        # print(sys.argv)
         if len(sys.argv) != 2:
             print("to enter a file to run")
             sys.exit(1)
@@ -118,77 +103,177 @@ class CPU:
                     self.ram[address] = num
                     address += 1
 
-    def ALU(self, op):
-        """ALU operations."""
-        print(f"printing self.reg: \n", self.reg)
-        print(f"ram/memory: \n{self.ram}")
-        print(f"pc current location: {self.pc}")
+    def ADD(self):
+        # print(f"printing self.reg: \n", self.reg)
+        # print(f"ram/memory: \n{self.ram}")
+        # print(f"pc current location: {self.pc}")
         self.pc += 1
         reg_a = self.ram[self.pc]
         self.pc += 1
         reg_b = self.ram[self.pc]
         print(f"reg_a: {reg_a}, reg_b: {reg_b}")
         print(f"the pc is at: {self.pc}")
-        # self.alu(MUL, counter1, counter2)
 
-        if op == ADD:
-            val1 = self.reg[reg_a]
-            val2 = self.reg[reg_b]
-            self.reg[reg_a] = val1 + val2
-            print(f"after adding: {self.reg[self.ram[reg_a]]}")
-            self.pc += 1
+        val1 = self.reg[reg_a]
+        val2 = self.reg[reg_b]
+        self.reg[reg_a] = val1 + val2
+        print(f"after adding: {self.reg[self.ram[reg_a]]}")
+        self.pc += 1
 
-        elif op == SUB:
-            # this may need adjustment..
-            # don't think binary handles neg numbers...
-            # we'll see i guess
-            val1 = self.reg[self.ram[reg_a]]
-            val2 = self.reg[self.ram[reg_b]]
-            new_val = val1 - val2
-            self.reg[reg_a] = new_val
-            self.pc += 1
+    def SUB(self):
+        # this may need adjustment..
+        # don't think binary handles neg numbers...
+        # we'll see i guess
+        # print(f"printing self.reg: \n", self.reg)
+        # print(f"ram/memory: \n{self.ram}")
+        # print(f"pc current location: {self.pc}")
+        self.pc += 1
+        reg_a = self.ram[self.pc]
+        self.pc += 1
+        reg_b = self.ram[self.pc]
+        # print(f"reg_a: {reg_a}, reg_b: {reg_b}")
+        # print(f"the pc is at: {self.pc}")
+        val1 = self.reg[self.ram[reg_a]]
+        val2 = self.reg[self.ram[reg_b]]
+        new_val = val1 - val2
+        self.reg[reg_a] = new_val
+        self.pc += 1
 
-        elif op == MUL:
-            val1 = self.reg[reg_a]
-            val2 = self.reg[reg_b]
-            new_val = val1 * val2
-            self.reg[reg_a] = new_val
-            self.pc += 1
+    def MUL(self):
+        # print(f"printing self.reg: \n", self.reg)
+        # print(f"ram/memory: \n{self.ram}")
+        # print(f"pc current location in MUL fn: {self.pc}")
+        self.pc += 1
+        reg_a = self.ram[self.pc]
+        self.pc += 1
+        reg_b = self.ram[self.pc]
+        # print(f"reg_a: {reg_a}, reg_b: {reg_b}")
+        # print(f"the pc is at: {self.pc}")
+        val1 = self.reg[reg_a]
+        val2 = self.reg[reg_b]
+        new_val = val1 * val2
+        self.reg[reg_a] = new_val
+        # print(f"new value in self.reg[reg_a]: {self.reg[reg_a]}")
+        self.pc += 1
+        # print(f"new self.pc: {self.pc}")
 
-        elif op == DIV:
-            self.reg[self.ram[reg_a]] /= self.reg[self.ram[reg_b]]
-            self.pc += 1
+    def DIV(self):
+        # print(f"printing self.reg: \n", self.reg)
+        # print(f"ram/memory: \n{self.ram}")
+        # print(f"pc current location: {self.pc}")
+        self.pc += 1
+        reg_a = self.ram[self.pc]
+        self.pc += 1
+        reg_b = self.ram[self.pc]
+        print(f"reg_a: {reg_a}, reg_b: {reg_b}")
+        print(f"the pc is at: {self.pc}")
+        val1 = self.reg[reg_a]
+        val2 = self.reg[reg_b]
+        val1 /= val2
+        self.pc += 1
 
-        elif op == DEC:
-            # for subtracting 1 from the value stored in given reg
-            # self.decrement(self.reg[regNumber])
-            value = self.reg[self.ram[reg_a]]
-            print(value)
-            value -= 1
-            print(value)
-            self.reg[self.ram[reg_a]] = value
-            self.pc += 1
+    def DEC(self):
+        # for subtracting 1 from the value stored in given reg
+        # self.decrement(self.reg[regNumber])
+        reg_a = self.ram[self.pc+1]
+        value = self.reg[reg_a]
+        print(value)
+        value -= 1
+        print(value)
+        self.reg[self.ram[reg_a]] = value
+        self.pc += 2
 
-        else:
-            raise Exception("Unsupported ALU operation")
+        # else:
+        #     raise Exception("Unsupported ALU operation")
 
     def LDI(self):  # in run()
-        print(f" from LDI self.pc: {self.pc}")
+        # print(f" from LDI self.pc: {self.pc}")
         self.pc += 1
         register_number = self.ram[self.pc]
         rg = register_number
-        print(f"assigned reg number in ldi: {rg}")
         self.pc += 1
         self.reg[rg] = self.ram[self.pc]
         value_string = self.reg[rg]
         vs = value_string
-        print(f"assigned value string: {vs}, self.pc: {self.pc}")
-        print(f"just before assigning: rg: {rg}, vs: {vs}")
-        # self.ldi(rg, vs)
         self.reg[rg] = vs
-
         self.pc += 1
-        print(f"after ldi ran pc at: {self.pc}")
+
+    def HLT(self):
+        print("working from branctable fn's\nGOODBYE!")
+        self.running = False
+
+    def PRN(self):  # in run()
+        the_P = self.ram[self.pc+1]
+        print_it = self.reg[the_P]
+        print(print_it)
+        self.pc += 2
+
+    def PUSH(self):
+        # print(f"pushy")
+        # my SP is the index at the end of the self.ram
+        # get reg from memory
+        register = self.ram[self.pc + 1]
+        # decrement the Stack Pointer
+        self.reg[self.SP] -= 1
+        # read the next value for register location
+        registerV = self.reg[register]
+        # take the value in that reg and add to stack
+        # print(f"new stack pointer: ", self.reg[self.SP])
+        self.ram[self.reg[self.SP]] = registerV
+        # looking to see it was added at the end there
+        # print(self.ram)
+        self.pc += 2
+
+    def POP(self):
+        # print(f"poppy")
+        # pop the reg
+        value = self.ram[self.reg[self.SP]]
+        register = self.ram[self.pc + 1]
+        # pop the value of stack location SP
+        self.reg[register] = value
+        # store the value into register given
+        # increment the SP
+        self.reg[self.SP] += 1
+        # print(f"new stack pointer: {self.reg[self.SP]}")
+        self.pc += 2
+
+    def run(self):  # need to establish a  branch_table
+        # aka a dict so that the run checks for the op then if exisits
+        # runs it
+        """Run the CPU."""
+        while self.running:
+            command = self.ram[self.pc]
+            # stackP = self.SP
+            # print(f"seeing what this gives me: ", stackP)
+
+            if command == PRN:
+                self.branchtable[PRN]()
+
+            elif command == MUL:
+                self.branchtable[MUL]()
+
+            elif command == LDI:
+                self.branchtable[LDI]()
+
+            elif command == DEC:
+                self.pc += 1
+                reg_num = self.ram[self.pc]
+                self.reg[reg_num] = self.ram[self.pc]
+                reg_num -= 1
+
+            elif command == HLT:
+                self.branchtable[HLT]()
+
+            elif command == PUSH:
+                self.branchtable[PUSH]()
+
+            elif command == POP:
+                self.branchtable[POP]()
+
+            else:
+                print(
+                    f"command: {bin(command)}\n\nwe don't know that shit... need to add more funcitons")
+                sys.exit(1)
 
     def trace(self):
         """
@@ -216,99 +301,3 @@ class CPU:
 
     def ram_write(self, ramN, value):  # writes info to the ram/memory at a specific location
         self.ram[ramN] = value
-
-    def halt(self):  # in run()
-        self.running = False
-
-    def HLT(self):
-        print("working from dict")
-        self.running = False
-
-    def PRN(self):  # in run()
-        # self.ram_read(self.pc+1)
-        the_P = self.ram[self.pc+1]
-        # print(f"the_P: ", the_P)
-        print_it = self.reg[the_P]
-        print(print_it)
-        self.pc += 2
-
-    def run(self):  # need to establish a  branch_table
-        # aka a dict so that the run checks for the op then if exisits
-        # runs it
-        """Run the CPU."""
-        opCodes = {
-            130: self.LDI(),
-            71: self.PRN(),
-            1: self.HLT(),
-            # 160: self.alu(ADD),
-            # 161: self.alu(SUB),
-            162: self.ALU(MUL),
-            '0b10100011': self.ALU(DIV),
-            '0b10100100': self.ALU(MOD),
-            '0b1100101': self.ALU(INC),
-            '0b1100110': DEC,
-            '0b10100111': CMP,
-            '0b10101000': AND,
-            '0b1101001': NOT,
-            '0b10101010': OR,
-            '0b10101011': XOR,
-            '0b10101100': SHL,
-            '0b10101101': SHR,
-
-        }
-        print(f"opCodes value test: ", opCodes[71])
-        func = opCodes.get(71, lambda: "went wonky")
-        print(f"should print next reg value", func)
-        while self.running:
-            print(f"self.pc: {self.pc}, \nreg0: {self.reg}")
-            command = self.ram[self.pc]
-            testC = self.ram[self.pc]
-            print(f"what fn in memory called testC: {testC}")
-            print(f"binary form of what's in testC: ", (bin(testC)))
-            theString = str(bin(testC))
-            print(f"type of theString: {type(theString)} {theString}")
-            value = opCodes[theString]
-            print(f"trying to get value from dict ", value)
-            if command in opCodes:
-                func = opCodes.get(command, lambda: "error dude")
-                print(f"print command: ", command)
-                func()
-            # if command == PRN:
-            #     self.PRN()
-
-            # elif command == MUL:
-            #     print(f"printing self.reg: \n", self.reg)
-            #     print(f"ram/memory: \n{self.ram}")
-            #     print(f"pc current location: {self.pc}")
-            #     counter1 = self.pc+1
-            #     counter2 = self.pc+2
-            #     print(counter1, counter2)
-            #     print(f"the pc is at: {self.pc}")
-            #     self.alu(MUL)
-            #     self.pc += 3
-
-            # elif command == LDI:
-            #     self.LDI()
-            # self.pc += 1
-            # register_number = self.ram[self.pc]
-            # rg = register_number
-            # self.pc += 1
-            # self.reg[rg] = self.ram[self.pc]
-            # value_string = self.reg[rg]
-            # vs = value_string
-            # # print(f"just before assigning: rg: {rg}, vs: {vs}")
-            # self.ldi(rg, vs)
-            # self.pc += 1
-
-            # elif command == DEC:
-            #     self.pc += 1
-            #     reg_num = self.ram[self.pc]
-            #     self.reg[reg_num] = self.ram[self.pc]
-            #     reg_num -= 1
-
-            # elif command == HLT:
-            #     self.halt()
-
-            else:
-                print(f"we don't know that shit... need to add more funcitons")
-                sys.exit(1)
