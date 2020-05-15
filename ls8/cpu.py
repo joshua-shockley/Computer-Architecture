@@ -25,6 +25,9 @@ OR = 0b10101010
 XOR = 0b10101011
 SHL = 0b10101100
 SHR = 0b10101101
+CALL = 0b01010000
+RET = 0b00010001
+LD = 0b10000011
 
 
 class CPU:
@@ -51,6 +54,10 @@ class CPU:
         self.branchtable[HLT] = self.HLT
         self.branchtable[PUSH] = self.PUSH
         self.branchtable[POP] = self.POP
+        self.branchtable[CALL] = self.CALL
+        self.branchtable[RET] = self.RET
+        self.branchtable[LD] = self.LD
+        self.branchtable[ADD] = self.ADD
 
 
 # this gets me  a simplified binary number without the first zeros
@@ -104,20 +111,19 @@ class CPU:
                     address += 1
 
     def ADD(self):
-        # print(f"printing self.reg: \n", self.reg)
-        # print(f"ram/memory: \n{self.ram}")
-        # print(f"pc current location: {self.pc}")
+        # print(f"ram: {self.ram}\n\nregisters: {self.reg}")
+        # print(f"the pc is at: {self.pc}")
         self.pc += 1
         reg_a = self.ram[self.pc]
         self.pc += 1
         reg_b = self.ram[self.pc]
-        print(f"reg_a: {reg_a}, reg_b: {reg_b}")
-        print(f"the pc is at: {self.pc}")
-
+        # print(
+        #     f"reg_a value: {self.reg[reg_a]}, reg_b value: {self.reg[reg_b]}")
         val1 = self.reg[reg_a]
         val2 = self.reg[reg_b]
-        self.reg[reg_a] = val1 + val2
-        print(f"after adding: {self.reg[self.ram[reg_a]]}")
+        new_value = val1 + val2
+        self.reg[reg_a] = new_value
+        # print(f"after adding: {self.reg[reg_a]}")
         self.pc += 1
 
     def SUB(self):
@@ -225,7 +231,6 @@ class CPU:
         self.pc += 2
 
     def POP(self):
-        # print(f"poppy")
         # pop the reg
         value = self.ram[self.reg[self.SP]]
         register = self.ram[self.pc + 1]
@@ -237,20 +242,54 @@ class CPU:
         # print(f"new stack pointer: {self.reg[self.SP]}")
         self.pc += 2
 
+    def CALL(self):
+
+        # push this to stack
+        # when pushing to the stack need to move the pointer as it build down
+        self.reg[self.SP] -= 1
+        self.ram[self.reg[self.SP]] = self.pc+2
+        # print(
+        #     f"next location to come back to at RET: {self.ram[self.reg[self.SP]]}")
+        # read_ram() the value in next reg and set pc to the value
+        register = self.ram[self.pc+1]
+        # print(f"register: {register}")
+        self.pc = self.reg[register]
+
+    def RET(self):
+        # print(
+        #     f"in RET FN SP:{self.SP}\n\n memory at SP: {self.ram[self.reg[self.SP]]}")
+        # pop the current value off stack
+        return_address = self.ram[self.reg[self.SP]]
+        # should be return the address from the stack to point to set self.pc
+        self.reg[self.SP] += 1  # sudo poping so need to increment
+        # then set the self.pc
+        # print(f"return_address: {return_address}")
+        self.pc = return_address
+
+    def LD(self):
+        print(f"in the LD fn")
+
     def run(self):  # need to establish a  branch_table
         # aka a dict so that the run checks for the op then if exisits
         # runs it
         """Run the CPU."""
         while self.running:
             command = self.ram[self.pc]
-            # stackP = self.SP
-            # print(f"seeing what this gives me: ", stackP)
-
+            print(f"self.pc: {self.pc}\n\nself.SP: {self.SP}")
             if command == PRN:
                 self.branchtable[PRN]()
 
+            elif command == CALL:
+                self.branchtable[CALL]()
+
+            elif command == RET:
+                self.branchtable[RET]()
+
             elif command == MUL:
                 self.branchtable[MUL]()
+
+            elif command == ADD:
+                self.branchtable[ADD]()
 
             elif command == LDI:
                 self.branchtable[LDI]()
@@ -298,6 +337,7 @@ class CPU:
     def ram_read(self, pc):  # reads data from ram/memory at a specific location
         read_at = self.ram[pc]
         print(read_at)
+        return read_at
 
     def ram_write(self, ramN, value):  # writes info to the ram/memory at a specific location
         self.ram[ramN] = value
