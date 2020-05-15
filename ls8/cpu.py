@@ -11,6 +11,10 @@ PRN = 0b01000111  # prints a number from reg
 HLT = 0b1  # stops program
 PUSH = 0b1000101
 POP = 0b1000110
+CMP = 0b10100111
+JNE = 0b01010110
+JMP = 0b01010100
+JEQ = 0b01010101  # ls8.spec.md line 344
 ADD = 0b10100000
 SUB = 0b10100001
 MUL = 0b10100010
@@ -18,7 +22,6 @@ DIV = 0b10100011
 MOD = 0b10100100
 INC = 0b1100101
 DEC = 0b1100110
-CMP = 0b10100111
 AND = 0b10101000
 NOT = 0b1101001
 OR = 0b10101010
@@ -41,12 +44,18 @@ class CPU:
         # r7 is reserved as the stack pointer
         self.ram = [0] * 256  # ram is the memory i believe so far
         self.pc = 0  # this is the Program Counter... points to the location in memory at what program to read...current action
+        self.running = True  # sets this as a starter flag for the loop to run
         self.SP = 7
         self.reg[self.SP] = len(self.ram)-1
-        self.running = True  # sets this as a starter flag for the loop to run
-        self.fl = 00000000  # this is a flag
+        self.FL = 4
         # FL: BITS: 00000LGE Less-than, Greater-than, Equal if reg_a is one those to reg_b as 1 or if false 0
-        self.ie = 00000000
+        # this is a flag '00000LGE' see LS8-spec.md line 27 on what to set for each: <, >, ==
+        self.reg[self.FL] = '00000000'
+        # self.IM = 5  # for interrupt mask
+        # self.reg[self.IM] = 'n/a'  # need to look into how to set this up
+        # self.IS = 6  # for interrupt status
+        # # this may not be how to handle this... ls8-spec.md line 307 & 322-338?
+        # self.reg[self.IS] = False
         self.branchtable = {}
         self.branchtable[LDI] = self.LDI
         self.branchtable[PRN] = self.PRN
@@ -58,6 +67,10 @@ class CPU:
         self.branchtable[RET] = self.RET
         self.branchtable[LD] = self.LD
         self.branchtable[ADD] = self.ADD
+        self.branchtable[CMP] = self.CMP
+        self.branchtable[JMP] = self.JMP
+        self.branchtable[JEQ] = self.JEQ
+        self.branchtable[JNE] = self.JNE
 
 
 # this gets me  a simplified binary number without the first zeros
@@ -269,6 +282,18 @@ class CPU:
     def LD(self):
         print(f"in the LD fn")
 
+    def CMP(self):
+        print(f"inside CMP")
+
+    def JEQ(self):
+        print(f"inside of JEQ")
+
+    def JMP(self):
+        print(f"inside of JMP")
+
+    def JNE(self):
+        print(f"inside the JNE")
+
     def run(self):  # need to establish a  branch_table
         # aka a dict so that the run checks for the op then if exisits
         # runs it
@@ -276,8 +301,22 @@ class CPU:
         while self.running:
             command = self.ram[self.pc]
             print(f"self.pc: {self.pc}\n\nself.SP: {self.SP}")
+            # prints here pre-command to check stuf out..
+
             if command == PRN:
                 self.branchtable[PRN]()
+
+            elif command == CMP:
+                self.branchtable[CMP]()
+
+            elif command == JEQ:
+                self.branchtable[JEQ]()
+
+            elif command == JMP:
+                self.branchtable[JMP]()
+
+            elif command == JNE:
+                self.branchtable[JNE]()
 
             elif command == CALL:
                 self.branchtable[CALL]()
@@ -294,11 +333,11 @@ class CPU:
             elif command == LDI:
                 self.branchtable[LDI]()
 
-            elif command == DEC:
-                self.pc += 1
-                reg_num = self.ram[self.pc]
-                self.reg[reg_num] = self.ram[self.pc]
-                reg_num -= 1
+            # elif command == DEC:
+            #     self.pc += 1
+            #     reg_num = self.ram[self.pc]
+            #     self.reg[reg_num] = self.ram[self.pc]
+            #     reg_num -= 1
 
             elif command == HLT:
                 self.branchtable[HLT]()
